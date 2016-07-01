@@ -1,0 +1,750 @@
+
+
+<!DOCTYPE html>
+<html >
+  <head>
+    <meta charset="UTF-8">
+
+
+    <title>Halfhearted</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    
+    
+        <style>
+      body {
+  margin: 40px auto;
+  max-width: 640px;
+  line-height: 1.6;
+  font-size: 18px;
+  font-family: sans-serif;
+  color: #444;
+  padding: 0 10px;
+}
+
+h1 {
+  line-height: 1.2;
+}
+
+#game-wrapper {
+  display: flex;
+  flex-flow: column;
+}
+
+#game {
+  width: 640px;
+  height: 480px;
+  line-height: 0;
+}
+
+.gameover, .gamewon {
+  position: relative;
+  z-index: -1;
+}
+.gameover .tile, .gamewon .tile {
+  opacity: 0.4;
+}
+.gameover .hidden, .gamewon .hidden {
+  opacity: 0.2;
+  visibility: visible;
+}
+.gameover::before, .gamewon::before {
+  content: "GAME OVER";
+  display: block;
+  text-align: center;
+  line-height: 480px;
+  width: 640px;
+  height: 480px;
+  font-size: 38px;
+  z-index: 100;
+  opacity: 1;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+}
+.gameover + #info > :not(#reset), .gamewon + #info > :not(#reset) {
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.gamewon::before {
+  content: "YOU WIN!";
+}
+
+.tile {
+  width: 2.5%;
+  height: 3.33333%;
+  display: inline-block;
+  background-color: gray;
+  position: relative;
+}
+.tile > span {
+  position: absolute;
+  bottom: 50%;
+  left: 0px;
+  text-align: center;
+  font-size: 10.66667px;
+}
+
+.player {
+  background-color: lime;
+}
+
+.wall {
+  background-color: rebeccapurple;
+}
+
+.enemy {
+  background-color: red;
+}
+
+.boss {
+  box-sizing: border-box;
+  background: radial-gradient(circle farthest-corner, #ff0000, #660000);
+  z-index: 3;
+  animation-duration: 2s;
+  animation-name: bossspin;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-timing-function: linear;
+}
+.boss > span {
+  left: 2px;
+}
+@keyframes bossspin {
+  from {
+    transform: scale(1);
+  }
+  85% {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.5);
+  }
+}
+.weapon {
+  background-color: blue;
+}
+
+.health {
+  background-color: gold;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.exit {
+  box-sizing: border-box;
+  background-color: #444;
+  border: 0px solid #5e5e5e;
+  animation-duration: 2s;
+  animation-name: exitflash;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-timing-function: ease-in-out;
+}
+@keyframes exitflash {
+  from {
+    border-width: 0px;
+  }
+  to {
+    border-width: 5.33333px;
+  }
+}
+#info {
+  display: flex;
+  flex-flow: row;
+  align-items: center;
+  width: 100%;
+}
+#info #controls {
+  flex: none;
+  position: relative;
+  width: 60px;
+  height: 40px;
+}
+#info #controls button {
+  width: 20px;
+  height: 20px;
+  padding: 0px;
+}
+#info #controls button:nth-child(1) {
+  position: absolute;
+  left: 20px;
+  top: 0px;
+}
+#info #controls button:nth-child(2) {
+  position: absolute;
+  left: 0px;
+  top: 10px;
+}
+#info #controls button:nth-child(3) {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+}
+#info #controls button:nth-child(4) {
+  position: absolute;
+  left: 40px;
+  top: 10px;
+}
+#info #reset {
+  height: 100%;
+  margin-right: 1em;
+}
+#info > span {
+  text-align: center;
+}
+#info #health, #info #level {
+  flex: auto;
+  position: relative;
+  z-index: -2;
+}
+#info #health #health_bar, #info #health #xp_bar, #info #level #health_bar, #info #level #xp_bar {
+  z-index: -1;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  height: 100%;
+}
+#info #health_bar {
+  background-color: gold;
+}
+#info #xp_bar {
+  background-color: #ff8080;
+}
+#info #level {
+  width: 6em;
+  flex: none;
+}
+#info #floor {
+  width: 4em;
+  flex: none;
+}
+#info #weapon {
+  width: 10em;
+  flex: none;
+}
+#info #weapon.new {
+  animation-duration: 0.5s;
+  animation-name: flashnew;
+}
+@keyframes flashnew {
+  from {
+    background-color: blue;
+    color: white;
+  }
+  to {
+    background-color: white;
+    color: #444;
+  }
+}
+
+    </style>
+
+    
+    
+    
+  </head>
+
+  <body translate="no" >
+
+    <h1>Halfhearted, <small>a roguelike</small></h1>
+<div id="game-wrapper"></div>
+    
+    <script src='https://fb.me/react-15.1.0.min.js'></script>
+<script src='https://fb.me/react-dom-15.1.0.min.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.12.0/lodash.min.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mousetrap/1.4.6/mousetrap.min.js'></script>
+
+        <script>
+      "use strict";
+
+var fowEnabled = true;
+
+// GAME LOGIC CODE
+// ===============
+var Logic = {};
+Logic.canvas = { width: 640, height: 480 };
+Logic.tileSize = 16;
+Logic.world = { width: Logic.canvas.width / Logic.tileSize, height: Logic.canvas.height / Logic.tileSize };
+Logic.weaponList = [{ name: "Fist", damage: "2-4" }, { name: "Sword", damage: "6-8" }, { name: "Mace", damage: "10-16" }, { name: "RNG Bait", damage: "1-50" }];
+
+Logic.isEmpty = function (_ref, world) {
+  var x = _ref.x;
+  var y = _ref.y;
+
+  if (x < 0 || x > Logic.world.width - 1 || y < 0 || y > Logic.world.height - 1) return false;
+  var tile = world[y][x];
+  if (!tile.type) return true;
+  return false;
+};
+Logic.getEmptyCoords = function (world) {
+  var x, y;
+  do {
+    x = _.random(0, Logic.world.width - 1);
+    y = _.random(0, Logic.world.height - 1);
+  } while (!Logic.isEmpty({ x: x, y: y }, world));
+  return { x: x, y: y };
+};
+
+Logic.make = {
+  world: function world() {
+    var world = [];
+    for (var y = 0; y < Logic.world.height; y++) {
+      world[y] = [];
+      for (var x = 0; x < Logic.world.width; x++) {
+        world[y][x] = {};
+        if (x === 0 || x === Logic.world.width - 1 || y === 0 || y === Logic.world.height - 1) world[y][x].type = "wall";
+      }
+    }
+
+    return world;
+  },
+  rooms: function rooms(world) {
+    var heightFactors = _.range(Logic.world.height / 3).filter(function (x) {
+      return Logic.world.height % x === 0 && x > 1;
+    });
+    var widthFactors = _.range(Logic.world.width / 3).filter(function (x) {
+      return Logic.world.width % x === 0 && x > 1;
+    });
+    var roomsY = _.sample(heightFactors);
+    var roomsX = _.sample(widthFactors);
+    var totalRooms = roomsY * roomsX;
+    var roomWidth = Logic.world.width / roomsX;
+    var roomHeight = Logic.world.height / roomsY;
+
+    var buildWall = function buildWall() {
+      return Math.random() > 0.2 / (totalRooms / 12);
+    };
+    var buildPiece = _.memoize(function (i, j, size) {
+      var include = Array(size - 2).fill(true);
+      include[0] = Math.random() > 0.7;
+      include = _.shuffle(include);
+      include.push(true);
+      include.unshift(true);
+      for (var k = 0; k < i; k++) {
+        var _include;
+
+        (_include = include).push.apply(_include, include);
+      }return include;
+    }, function () {
+      for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+
+      return args.join("-");
+    });
+
+    for (var j = 0; j < roomsY; j++) {
+      for (var i = 0; i < roomsX; i++) {
+        if (buildWall()) {
+          for (var x = roomWidth * i; x < roomWidth * i + roomWidth; x++) {
+            if (buildPiece(i, j, roomWidth)[x]) world[roomHeight * j][x] = { type: "wall" };
+          }
+        }
+        if (buildWall()) {
+          for (var y = roomHeight * j; y < roomHeight * j + roomHeight; y++) {
+            if (buildPiece(j, i, roomHeight)[y]) world[y][roomWidth * i] = { type: "wall" };
+          }
+        }
+      }
+    }
+  },
+  revealedTable: function revealedTable() {
+    var revealed = [];
+    for (var y = 0; y < Logic.world.height; y++) {
+      revealed[y] = Array(Logic.world.width).fill(false);
+    }
+    return revealed;
+  }
+};
+
+Logic.spawn = function (type, world, count) {
+  var floor = arguments.length <= 3 || arguments[3] === undefined ? 1 : arguments[3];
+
+  for (var i = 0; i < count; i++) {
+    var _Logic$getEmptyCoords = Logic.getEmptyCoords(world);
+
+    var x = _Logic$getEmptyCoords.x;
+    var y = _Logic$getEmptyCoords.y;
+
+    world[y][x].type = type;
+    if (type === "weapon") {
+      world[y][x].weapon = _.sample(Logic.weaponList.slice(1));
+    }
+    if (type === "enemy") {
+      world[y][x].health = 5 * floor;
+      world[y][x].damage = Math.floor((floor + 1) / 2);
+      world[y][x].id = _.uniqueId(type);
+    }
+    if (type === "boss") {
+      world[y][x].health = 15 * floor;
+      world[y][x].damage = floor + 1;
+      world[y][x].id = _.uniqueId(type);
+    }
+  }
+};
+
+Logic.runEnemyAI = function (player, world) {
+  var idsSeen = [];
+  var playerX = player.x;
+  var playerY = player.y;
+  for (var origY = 0; origY < world.length; origY++) {
+    for (var origX = 0; origX < world[0].length; origX++) {
+      var tile = world[origY][origX];
+      if (tile.type !== "enemy" && tile.type !== "boss") continue;
+      if (idsSeen.indexOf(tile.id) > -1) continue;
+      var dX = playerX - origX;
+      var dY = playerY - origY;
+
+      var xClear = Logic.isEmpty({ x: origX + Math.sign(dX), y: origY }, world);
+      var yClear = Logic.isEmpty({ x: origX, y: origY + Math.sign(dY) }, world);
+      if (!xClear && !yClear) continue;
+      if (!yClear || xClear && Math.abs(dX) < Math.abs(dY)) {
+        // don't actually hit the player
+        if (dY === 0 && (dX === 1 || dX === -1)) continue;
+        dY = 0;
+        dX = Math.sign(dX);
+      } else {
+        // don't actually hit the player
+        if (dX === 0 && (dY === 1 || dY === -1)) continue;
+        dX = 0;
+        dY = Math.sign(dY);
+      }
+      var newX = origX + dX;
+      var newY = origY + dY;
+
+      if (Logic.isEmpty({ x: newX, y: newY }, world)) {
+        idsSeen.push(tile.id);
+        world[origY][origX] = world[newY][newX];
+        world[newY][newX] = tile;
+      }
+    }
+  }
+};
+
+Logic.attemptMove = function (_ref2, world) {
+  var x = _ref2.x;
+  var y = _ref2.y;
+
+  if (x < 0 || x > Logic.world.width - 1 || y < 0 || y > Logic.world.height - 1) return ["revert"];
+  var tile = world[y][x];
+  if (!tile.type) return [];
+  if (tile.type === "wall") return ["revert"];
+  if (tile.type === "enemy") return ["revert", "damage " + tile.damage, "edamage"];
+  if (tile.type === "boss") return ["revert", "damage " + tile.damage, "bdamage"];
+  if (tile.type === "weapon") return ["collectWeapon"];
+  if (tile.type === "health") return ["healthBoost"];
+  if (tile.type === "exit") return ["nextFloor"];
+  alert("Unexpected tile type: " + tile.type + " at " + x + ", " + y);
+  return false;
+};
+Logic.reveal = function (_ref3, radius, revealed) {
+  var x = _ref3.x;
+  var y = _ref3.y;
+
+  radius = _.clamp(radius, 0, Logic.world.width + Logic.world.height);
+  for (var dx = -radius; dx <= radius; dx++) {
+    var w = radius - Math.abs(dx);
+    for (var dy = -w; dy <= w; dy++) {
+      var rx = _.clamp(x + dx, 0, Logic.world.width - 1);
+      var ry = _.clamp(y + dy, 0, Logic.world.height - 1);
+      revealed[ry][rx] = true;
+    }
+  }
+};
+Logic.rollDamage = function (weapon, level) {
+  var _weapon$damage$split = weapon.damage.split("-");
+
+  var min = _weapon$damage$split[0];
+  var max = _weapon$damage$split[1];
+
+  return Math.round(_.random(min, max, true) * (level + 3) / 4);
+};
+
+// UI CODE
+// =======
+
+var UI = {
+  Tile: React.createClass({
+    displayName: "Tile",
+
+    render: function render() {
+      var cl = "tile";
+      if (this.props.type) {
+        cl += " " + this.props.type;
+      }
+      if (!this.props.revealed && fowEnabled) {
+        cl += " hidden";
+      }
+      var healthText;
+      if (this.props.health) healthText = React.createElement(
+        "span",
+        null,
+        this.props.health
+      );
+      return React.createElement(
+        "div",
+        { className: cl },
+        healthText
+      );
+    }
+  }),
+  Player: React.createClass({
+    displayName: "Player",
+
+    render: function render() {
+      return React.createElement("div", { className: "tile player" });
+    }
+  }),
+  Game: React.createClass({
+    displayName: "Game",
+
+    getInitialState: function getInitialState() {
+      var world = Logic.make.world();
+      Logic.make.rooms(world);
+      Logic.spawn("enemy", world, 5);
+      Logic.spawn("weapon", world, 2);
+      Logic.spawn("health", world, 3);
+      Logic.spawn("exit", world, 1);
+
+      var player = Logic.getEmptyCoords(world);
+
+      player.level = 1;
+      player.health = 10;
+      player.weapon = Logic.weaponList[0];
+      player.xp = 0;
+
+      var floor = 1;
+
+      var revealed = Logic.make.revealedTable();
+      Logic.reveal(player, 5, revealed);
+      return { world: world, floor: floor, player: player, revealed: revealed };
+    },
+    maxHealth: function maxHealth() {
+      return this.state.player.level * 5 + 5;
+    },
+    nextXP: function nextXP() {
+      return this.state.player.level * this.state.player.level * 10;
+    },
+    move: function move(dx, dy) {
+      var _this = this;
+
+      return function () {
+        var player = _.clone(_this.state.player);
+        if (player.won || player.health <= 0) return;
+        var world = _this.state.world;
+        var floor = _this.state.floor;
+        var revealed = _.cloneDeep(_this.state.revealed);
+        player.x += dx;
+        player.y += dy;
+        player.weapon.new = false;
+        var response = Logic.attemptMove(player, world);
+        if (response.indexOf("revert") > -1) {
+          player.x -= dx;
+          player.y -= dy;
+        }
+        if (response.indexOf("collectWeapon") > -1) {
+          player.weapon = _.clone(world[player.y][player.x].weapon);
+          player.weapon.new = true;
+          world = _.cloneDeep(world);
+          world[player.y][player.x].weapon = _.clone(_this.state.player.weapon);
+        }
+        if (response.indexOf("healthBoost") > -1) {
+          player.health = _this.maxHealth();
+          world = _.cloneDeep(world);
+          delete world[player.y][player.x].type;
+        }
+        if (response.indexOf("nextFloor") > -1) {
+          floor++;
+          world = Logic.make.world();
+          Logic.make.rooms(world);
+          Logic.spawn("enemy", world, 5 + floor, floor);
+          Logic.spawn("weapon", world, 2, floor);
+          Logic.spawn("health", world, 3 + floor / 2, floor);
+          Logic.spawn("exit", world, 1);
+          if (Math.random() < (floor - 4) / 4) {
+            Logic.spawn("boss", world, 1, floor);
+          }
+
+          var _Logic$getEmptyCoords2 = Logic.getEmptyCoords(world);
+
+          var x = _Logic$getEmptyCoords2.x;
+          var y = _Logic$getEmptyCoords2.y;
+
+          player.x = x;
+          player.y = y;
+          revealed = Logic.make.revealedTable();
+          Logic.reveal(player, 5 + player.level, revealed);
+        }
+        if (response.filter(function (x) {
+          return x.indexOf("damage") === 0;
+        }).length > 0) {
+          var damages = response.filter(function (x) {
+            return x.indexOf("damage") === 0;
+          });
+          damages.forEach(function (x) {
+            var _x$split = x.split(" ");
+
+            var damage = _x$split[0];
+            var amt = _x$split[1];
+
+            player.health -= parseInt(amt);
+          });
+        }
+        if (response.indexOf("edamage") > -1 || response.indexOf("bdamage") > -1) {
+          var ex = player.x + dx;
+          var ey = player.y + dy;
+          world = _.cloneDeep(world);
+          world[ey][ex].health -= Logic.rollDamage(player.weapon, player.level);
+          if (world[ey][ex].health <= 0) {
+            world[ey][ex] = {};
+            player.xp += floor;
+            while (player.xp >= _this.nextXP()) {
+              player.xp -= _this.nextXP();
+              player.level++;
+              player.health = _this.maxHealth() + 5;
+            }
+            if (response.indexOf("bdamage") > -1) {
+              player.won = true;
+            }
+          }
+        }
+        Logic.runEnemyAI(player, world);
+        Logic.reveal(player, 5 + player.level, revealed);
+        _this.setState({ player: player, world: world, revealed: revealed, floor: floor });
+      };
+    },
+    reset: function reset() {
+      this.setState(this.getInitialState());
+    },
+    render: function render() {
+      var _this2 = this;
+
+      var makeTiles = function makeTiles(row, y) {
+        return row.map(function (tile, x) {
+          if (_this2.state.player.x === x && _this2.state.player.y === y) return React.createElement(UI.Player, null);
+          return React.createElement(UI.Tile, { type: tile.type, health: tile.health, revealed: _this2.state.revealed[y][x] });
+        });
+      };
+      var healthPct = this.state.player.health / this.maxHealth() * 100 + "%";
+      var xpPct = this.state.player.xp / this.nextXP() * 100 + "%";
+      var lvlMult = "";
+      if (this.state.player.level > 1) {
+        lvlMult = " x" + (this.state.player.level + 3) / 4;
+      }
+      var gameClass = "";
+      if (this.state.player.health <= 0) {
+        gameClass = "gameover";
+      } else if (this.state.player.won) {
+        gameClass = "gamewon";
+      }
+      return React.createElement(
+        "div",
+        { id: "game-wrapper" },
+        React.createElement(
+          "div",
+          { id: "game", className: gameClass },
+          this.state.world.map(makeTiles)
+        ),
+        React.createElement(
+          "div",
+          { id: "info" },
+          React.createElement(
+            "button",
+            { id: "reset", onClick: this.reset },
+            "Reset"
+          ),
+          React.createElement(
+            "div",
+            { id: "controls" },
+            React.createElement(
+              "button",
+              { onClick: this.move(0, -1) },
+              "U"
+            ),
+            React.createElement(
+              "button",
+              { onClick: this.move(-1, 0) },
+              "L"
+            ),
+            React.createElement(
+              "button",
+              { onClick: this.move(0, 1) },
+              "D"
+            ),
+            React.createElement(
+              "button",
+              { onClick: this.move(1, 0) },
+              "R"
+            )
+          ),
+          React.createElement(
+            "span",
+            { id: "health" },
+            React.createElement("div", { id: "health_bar", style: { width: healthPct } }),
+            React.createElement(
+              "div",
+              null,
+              this.state.player.health,
+              "/",
+              this.maxHealth()
+            )
+          ),
+          React.createElement(
+            "span",
+            { id: "level" },
+            React.createElement("div", { id: "xp_bar", style: { width: xpPct } }),
+            React.createElement(
+              "div",
+              null,
+              "Level ",
+              this.state.player.level
+            )
+          ),
+          React.createElement(
+            "span",
+            { id: "floor" },
+            "Floor ",
+            this.state.floor
+          ),
+          React.createElement(
+            "span",
+            { id: "weapon", className: this.state.player.weapon.new ? "new" : "" },
+            this.state.player.weapon.name,
+            " (",
+            this.state.player.weapon.damage,
+            lvlMult,
+            ")"
+          )
+        )
+      );
+    }
+  })
+};
+
+document.addEventListener("DOMContentLoaded", function () {
+  var game = ReactDOM.render(React.createElement(UI.Game, null), document.getElementById("game-wrapper"));
+  Mousetrap.bind('up', game.move(0, -1));
+  Mousetrap.bind('down', game.move(0, 1));
+  Mousetrap.bind('left', game.move(-1, 0));
+  Mousetrap.bind('right', game.move(1, 0));
+  Mousetrap.bind('enter up up down down left right left right b a enter', function () {
+    var player = _.cloneDeep(game.state.player);
+    player.level = 1337;
+    player.health = 9001;
+    player.xp = 0;
+    player.weapon = { name: "H4X", damage: "30-50" };
+    game.setState({ player: player, floor: 100 });
+  });
+});
+    </script>
+
+    
+    
+    
+  </body>
+</html>
+ 
